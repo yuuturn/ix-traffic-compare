@@ -1,0 +1,11 @@
+[Unit]
+Description=Fetch IX traffic graphs every hour
+
+[Timer]
+# 毎時0分・30分に実行（ランダム遅延60秒以内）
+OnCalendar=*-*-* *:00,30:00
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

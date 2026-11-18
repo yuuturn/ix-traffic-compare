@@ -1,0 +1,18 @@
+[Unit]
+Description=Fetch IX traffic graph images
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fetch-ix-traffic.sh
+User=www-data
+Group=www-data
+# タイムアウト: 全6画像取得で最大5分
+TimeoutStartSec=300
+# セキュリティ強化
+ProtectSystem=strict
+ReadWritePaths=/var/www/ix-traffic
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true

@@ -1,0 +1,43 @@
+# /etc/nginx/conf.d/default.conf 内の 443 server ブロック向け（参照用）
+# 反映: sudo bash /var/www/ix-traffic/deploy/apply-nginx-ix-traffic-deny.sh
+# 手動編集時はこの断片と default.conf を揃えること。
+
+    location = /ix-traffic {
+        return 301 /ix-traffic/;
+    }
+
+    location = /ix-traffic/manifest.json {
+        alias /var/www/ix-traffic/manifest.json;
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        default_type application/json;
+    }
+
+    location /ix-traffic/images/ {
+        alias /var/www/ix-traffic/images/;
+        autoindex off;
+        expires 7d;
+        add_header Cache-Control "public, immutable" always;
+
+        types {
+            image/png png;
+        }
+        default_type application/octet-stream;
+
+        try_files $uri =404;
+    }
+
+    location ~ ^/ix-traffic/(scripts|systemd|deploy)/ {
+        deny all;
+        return 404;
+    }
+
+    location ~ ^/ix-traffic/\. {
+        deny all;
+        return 404;
+    }
+
+    location /ix-traffic/ {
+        alias /var/www/ix-traffic/;
+        index index.html;
+        try_files $uri $uri/ /ix-traffic/index.html;
+    }
