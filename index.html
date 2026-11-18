@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IX Traffic Comparison</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --accent: #5b8def;
+    --accent-hover: #7ba5f7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* --- Header --- */
+  .header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  /* --- Controls --- */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .controls label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .controls input[type="date"],
+  .controls select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  .controls input[type="date"]:focus,
+  .controls select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* --- Navigation --- */
+  .nav-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .nav-row .btn { padding: 5px 12px; font-size: 0.8rem; }
+  .nav-row .current-ts {
+    font-family: "SF Mono", "Consolas", monospace;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* --- Grid --- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 16px;
+    padding: 20px 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-title {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title .ix-label { color: var(--accent); }
+  .card-title .region { color: var(--text-muted); font-weight: 400; }
+  .card-body {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+  }
+  .card-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .card-body .placeholder {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  /* --- Status bar --- */
+  .status {
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .status.error { color: #ef5350; }
+
+  /* --- Layout mode toggle --- */
+  .layout-toggle {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .layout-toggle button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .layout-toggle button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* 2-col layout */
+  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  /* 3-col layout */
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+  @media (max-width: 768px) {
+    .grid, .grid.cols-2, .grid.cols-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>IX Traffic Comparison</h1>
+  <div class="controls">
+    <div>
+      <label for="sel-date">Date</label><br>
+      <input type="date" id="sel-date">
+    </div>
+    <div>
+      <label for="sel-time">Time</label><br>
+      <select id="sel-time"></select>
+    </div>
+    <button class="btn" id="btn-load">Load</button>
+
+    <div class="layout-toggle">
+      <button data-cols="2" class="active">2 col</button>
+      <button data-cols="3">3 col</button>
+    </div>
+  </div>
+</div>
+
+<div class="nav-row">
+  <button class="btn" id="btn-prev" disabled>&larr; Prev</button>
+  <span class="current-ts" id="lbl-current">--</span>
+  <button class="btn" id="btn-next" disabled>Next &rarr;</button>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="grid cols-2" id="grid"></div>
+
+<script>
+(function() {
+  "use strict";
+
+  // --- IX定義 ---
+  const IX_LIST = [
+    { key: "jpnap_tokyo", ix: "JPNAP",  region: "Tokyo" },
+    { key: "jpnap_osaka", ix: "JPNAP",  region: "Osaka" },
+    { key: "jpix_tokyo",  ix: "JPIX",   region: "Tokyo" },
+    { key: "jpix_osaka",  ix: "JPIX",   region: "Osaka" },
+    { key: "bbix_tokyo",  ix: "BBIX",   region: "Tokyo" },
+    { key: "bbix_osaka",  ix: "BBIX",   region: "Osaka" },
+  ];
+
+  // --- State ---
+  let manifest = {};        // { ix_key: ["20260306_1400", ...] }
+  let allTimestamps = [];   // 全IX共通のユニークなタイムスタンプ（ソート済み）
+  let currentIndex = -1;
+
+  // --- DOM refs ---
+  const elDate    = document.getElementById("sel-date");
+  const elTime    = document.getElementById("sel-time");
+  const btnLoad   = document.getElementById("btn-load");
+  const btnPrev   = document.getElementById("btn-prev");
+  const btnNext   = document.getElementById("btn-next");
+  const lblCur    = document.getElementById("lbl-current");
+  const elGrid    = document.getElementById("grid");
+  const elStatus  = document.getElementById("status");
+
+  // --- Init ---
+  async function init() {
+    buildGrid();
+    await loadManifest();
+    setupEvents();
+
+    // デフォルト: 今日の日付をセット
+    const today = new Date().toISOString().slice(0, 10);
+    elDate.value = today;
+    populateTimeSelect(today);
+  }
+
+  function buildGrid() {
+    elGrid.innerHTML = IX_LIST.map(ix => `
+      <div class="card" id="card-${ix.key}">
+        <div class="card-title">
+          <span class="ix-label">${ix.ix}</span>
+          <span class="region">${ix.region}</span>
+        </div>
+        <div class="card-body">
+          <span class="placeholder">Select date/time to load</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function loadManifest() {
+    try {
+      const res = await fetch("/ix-traffic/manifest.json?_=" + Date.now());
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      manifest = await res.json();
+
+      // 全タイムスタンプのユニオンを生成
+      const tsSet = new Set();
+      for (const key of Object.keys(manifest)) {
+        manifest[key].forEach(ts => tsSet.add(ts));
+      }
+      allTimestamps = Array.from(tsSet).sort();
+
+      setStatus(`Loaded: ${allTimestamps.length} timestamps available`);
+    } catch (e) {
+      setStatus("Failed to load manifest.json: " + e.message, true);
+    }
+  }
+
+  // --- 日付に対応する時刻をセレクトに反映 ---
+  function populateTimeSelect(dateStr) {
+    const prefix = dateStr.replace(/-/g, "");  // "20260306"
+    const times = allTimestamps
+      .filter(ts => ts.startsWith(prefix))
+      .map(ts => ts.split("_")[1]);  // "1400"
+
+    elTime.innerHTML = "";
+    if (times.length === 0) {
+      elTime.innerHTML = '<option value="">-- No data --</option>';
+      return;
+    }
+    times.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t.slice(0, 2) + ":" + t.slice(2);
+      elTime.appendChild(opt);
+    });
+
+    // 最新の時刻を選択
+    elTime.value = times[times.length - 1];
+  }
+
+  // --- 表示 ---
+  function showTimestamp(ts) {
+    currentIndex = allTimestamps.indexOf(ts);
+    lblCur.textContent = formatTs(ts);
+    btnPrev.disabled = (currentIndex <= 0);
+    btnNext.disabled = (currentIndex >= allTimestamps.length - 1);
+
+    IX_LIST.forEach(ix => {
+      const card = document.getElementById("card-" + ix.key);
+      const body = card.querySelector(".card-body");
+      const hasThat = manifest[ix.key] && manifest[ix.key].includes(ts);
+
+      if (hasThat) {
+        body.innerHTML = `<img
+          src="/ix-traffic/images/${ix.key}/${ts}.png"
+          alt="${ix.ix} ${ix.region} ${ts}"
+          loading="lazy"
+          onerror="this.parentElement.innerHTML='<span class=\\'placeholder\\'>Image load error</span>'"
+        >`;
+      } else {
+        body.innerHTML = '<span class="placeholder">No data for this timestamp</span>';
+      }
+    });
+  }
+
+  function formatTs(ts) {
+    // "20260306_1400" -> "2026-03-06 14:00"
+    const d = ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8);
+    const t = ts.slice(9, 11) + ":" + ts.slice(11, 13);
+    return d + " " + t;
+  }
+
+  // --- Events ---
+  function setupEvents() {
+    elDate.addEventListener("change", () => {
+      populateTimeSelect(elDate.value);
+    });
+
+    btnLoad.addEventListener("click", () => {
+      const datePrefix = elDate.value.replace(/-/g, "");
+      const time = elTime.value;
+      if (!time) return;
+      const ts = datePrefix + "_" + time;
+      showTimestamp(ts);
+    });
+
+    btnPrev.addEventListener("click", () => {
+      if (currentIndex > 0) {
+        const ts = allTimestamps[currentIndex - 1];
+        syncDateTimeSelectors(ts);
+        showTimestamp(ts);
+      }
+    });
+
+    btnNext.addEventListener("click", () => {
+      if (currentIndex < allTimestamps.length - 1) {
+        const ts = allTimestamps[currentIndex + 1];
+        syncDateTimeSelectors(ts);
+        showTimestamp(ts);
+      }
+    });
+
+    // レイアウト切り替え
+    document.querySelectorAll(".layout-toggle button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".layout-toggle button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        elGrid.className = "grid cols-" + btn.dataset.cols;
+      });
+    });
+
+    // キーボードショートカット
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft")  btnPrev.click();
+      if (e.key === "ArrowRight") btnNext.click();
+    });
+  }
+
+  function syncDateTimeSelectors(ts) {
+    const d = ts.slice(0, 4) + "-" + ts.slice(4, 6) + "-" + ts.slice(6, 8);
+    const t = ts.split("_")[1];
+    elDate.value = d;
+    populateTimeSelect(d);
+    elTime.value = t;
+  }
+
+  function setStatus(msg, isError) {
+    elStatus.textContent = msg;
+    elStatus.className = "status" + (isError ? " error" : "");
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
